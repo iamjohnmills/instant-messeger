@@ -52,7 +52,8 @@
     class App {
       constructor(){
         document.addEventListener('DOMContentLoaded',this.handleContentLoaded.bind(this));
-        this.socket_server = 'ws://localhost:8003';
+        // this.socket_server = 'ws://localhost:8003';
+        this.socket_server = 'wss://instant-messeger.onrender.com'
         this.connected = false;
         this.user_name = null;
         this.room_name = null;
