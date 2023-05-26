@@ -12,8 +12,8 @@
     .font-bold { font-weight: bold; }
     .error { padding: 15px 0 5px 0; color: red;  text-align: center;}
     label { display: block; margin-bottom: 5px; }
-    input[type="text"] { width: 100%; font-size: 14px; outline: none; padding: 10px; background: #fff; border-width: 3px; border-color: #ccc; border-style: inset; }
-    button { color: #000; display: flex; align-items: center; justify-content: center; font-weight: bold; cursor: pointer; padding: 10px; background: #ddd; border-color: #fff; border-width: 3px; border-style: outset; }
+    input[type="text"] { border-radius: 0; width: 100%; font-size: 14px; outline: none; padding: 10px; background: #fff; border-width: 3px; border-color: #ccc; border-style: inset; }
+    button { border-radius: 0; color: #000; display: flex; align-items: center; justify-content: center; font-weight: bold; cursor: pointer; padding: 10px; background: #ddd; border-color: #fff; border-width: 3px; border-style: outset; }
     button:active { border-style: inset; }
     button:focus-visible { outline: none; background: #ccc; }
     .window { box-shadow: 5px 5px 5px rgba(0,0,0,0.2); border-width: 4px; background: #f1f1f1; border-style: ridge; padding: 10px; margin: 10px; opacity: 1; transform: scale(1); transition: all 0.2s ease-in-out; }
@@ -34,7 +34,7 @@
     @media screen and (max-width: 500px) {
       .container { display: unset }
       .window.chat, .window.buddylist { width: 100%; margin: 0 0 20px 0; }
-      .messages { height: 250px; }
+      .messages { height: 230px; }
       .buddies { height: unset; }
     }
   </style>
@@ -60,6 +60,7 @@
         this.buddies = [];
         this.buddylist_timeout = null;
         this.reconnect_timeout = null;
+        this.audio = null;
         // this.sound = new Audio();
         this.sounds = { enter: 'dooropen.wav', leave: 'doorslam.wav', receive: 'imrcv.wav', send: 'imsend.wav' };
         this.aim_logo_svg = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="35 52 65 69">
@@ -70,8 +71,6 @@
       }
       handleContentLoaded(event){
         this.els.root = document.getElementById('root');
-
-        this.audio = createNode({ tag: 'audio', attributes: { playsinline: 'true' } })
 
         this.els.window_loading = createNode({ root: this.els.root, tag: 'div', className: 'window center' });
         this.els.window_loading_title = createNode({ root: this.els.window_loading, tag: 'div', className: 'title', innerHTML: `${this.aim_logo_svg} Connect` });
@@ -149,6 +148,7 @@
           this.els.connect_error_message.classList.remove('none');
           return this.els.connect_error_message.innerHTML = response.error;
         }
+        window.scrollTo(0,0);
         if(response.data.room_name !== this.room_name) this.els.messages.innerHTML = ``;
         this.user_name = response.data.user_name;
         this.room_name = response.data.room_name;
@@ -201,7 +201,7 @@
       handleClickConnect(event){
         if(event.keyCode && event.keyCode !== 13) return;
         event.preventDefault();
-        console.log('handleCLickConnect')
+        this.audio = createNode({ tag: 'audio', attributes: { playsinline: 'true' } });
         const invalid_input = [this.els.input_user,this.els.input_room].find(input => !input.value );
         if(invalid_input){
           invalid_input.focus();
