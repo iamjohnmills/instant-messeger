@@ -123,6 +123,7 @@
           this.els.window_loading.classList.add('hidden');
           this.els.window_connect.classList.remove('hidden');
           this.els.input_user.focus();
+          if(this.user_name && this.room_name) this.handleClickConnect({ keyCode: 13 });            
         },500);
       }
       socketOnMessage(event){
@@ -200,7 +201,7 @@
       }
       handleClickConnect(event){
         if(event.keyCode && event.keyCode !== 13) return;
-        event.preventDefault();
+        if(event.preventDefault) event.preventDefault();
         this.audio = createNode({ tag: 'audio', attributes: { playsinline: 'true' } });
         const invalid_input = [this.els.input_user,this.els.input_room].find(input => !input.value );
         if(invalid_input){
