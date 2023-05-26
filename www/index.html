@@ -1,0 +1,236 @@
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Instant Messeger</title>
+  <link rel="icon" href="aim-logo.svg" sizes="any" type="image/svg+xml">
+  <style>
+    * { box-sizing: border-box;}
+    html,body { font-family: system-ui; line-height: 1.2; }
+    body { background-color: aqua; }
+    .none { display: none; }
+    .font-bold { font-weight: bold; }
+    .error { padding: 15px 0 5px 0; color: red;  text-align: center;}
+    label { display: block; margin-bottom: 5px; }
+    input[type="text"] { width: 100%; font-size: 14px; outline: none; padding: 10px; background: #fff; border-width: 3px; border-color: #ccc; border-style: inset; }
+    button { display: flex; align-items: center; justify-content: center; font-weight: bold; cursor: pointer; padding: 10px; background: #ddd; border-color: #fff; border-width: 3px; border-style: outset; }
+    button:active { border-style: inset; }
+    button:focus-visible { outline: none; background: #ccc; }
+    .window { box-shadow: 5px 5px 5px rgba(0,0,0,0.2); border-width: 4px; background: #f1f1f1; border-style: ridge; padding: 10px; margin: 10px; opacity: 1; transform: scale(1); transition: all 0.2s ease-in-out; }
+      .window .title { font-weight: bold; display: flex; align-items: center; border-color: #fff; border-style: inset; border-width: 2px; color: #fff; background: blue; position: relative; left: -10px; padding: 10px; top: -10px; width: calc(100% + 20px); right: -10px; }
+      .window .title svg { margin-right: 5px;}
+      .window .actions { display: flex; padding: 10px 0 0 0; margin: 0 -5px }
+      .window .actions > * { flex-grow: 1; flex-shrink: 1; margin: 0 5px; }
+    .window.hidden { opacity: 0; transform: scale(0.2); }
+    .window.center { position: fixed; width: 300px; top: 50%; margin-top: -100px; left: 50%; margin-left: -150px; z-index: 2; }
+    .window.connect input[type="text"] { margin-bottom: 10px;}
+      .window.connect .actions { padding: 0; }
+    .window.chat { flex-grow: 1; width: 400px  }
+    .window.buddylist {  flex-basis: 180px;  }
+    .container { display: flex; flex-wrap: wrap; justify-content: center; min-height: 100%; align-items: center; max-width: 760px; margin: 0 auto; }
+    .buddies, .messages { height: 300px; overflow-y: auto; padding: 10px; background: #fff;border-width: 2px;  border-style: inset; }
+    .messages > div { padding: 2px 0; }
+    .buddies > div { cursor: pointer; }
+    @media screen and (max-width: 500px) {
+      .container { display: unset }
+      .window.chat, .window.buddylist { width: 100%; margin: 0 0 20px 0; }
+      .messages { height: 250px; }
+      .buddies { height: unset; }
+    }
+  </style>
+  <script>
+    const createNode = (options) => {
+      const node = document.createElement(options.tag);
+      if(options.className) node.setAttribute('class',options.className);
+      if(options.innerHTML) node.innerHTML = options.innerHTML;
+      if(options.attributes) Object.keys(options.attributes).forEach(key => node.setAttribute(key,options.attributes[key]) );
+      if(options.style) Object.keys(options.style).forEach(key => node.style[key] = options.style[key]);
+      if(options.event_listeners) Object.keys(options.event_listeners).forEach(key => node.addEventListener(key,options.event_listeners[key]) )
+      if(options.root) options.root.appendChild(node);
+      return node;
+    }
+    class App {
+      constructor(){
+        document.addEventListener('DOMContentLoaded',this.handleContentLoaded.bind(this));
+        this.socket_server = 'ws://localhost:8003';
+        this.connected = false;
+        this.user_name = null;
+        this.room_name = null;
+        this.buddies = [];
+        this.buddylist_timeout = null;
+        this.sound = new Audio();
+        this.sounds = { enter: 'dooropen.wav', leave: 'doorslam.wav', receive: 'imrcv.wav', send: 'imsend.wav' };
+        this.aim_logo_svg = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="35 52 65 69">
+            <path d="M95.033 110.795c-3.873-8.715-9.252-14.416-13.555-17.859 3.227-.43 6.885-1.721 12.049-4.626l1.614-.861-.753-1.829-4.088-9.36-.968-2.152-2.044 1.184c-.108.108-4.411 2.259-9.36 1.721 5.379-1.398 9.36-6.239 9.36-12.049a12.535 12.535 0 0 0-12.587-12.587c-6.885 0-12.48 5.594-12.48 12.587 0 2.797.968 5.379 2.582 7.531-6.777 4.626-8.714 12.265-9.252 19.042-.215 1.721-.323 2.259-.323 2.474-4.303 8.823-13.555 10.114-13.986 10.221l-2.689.322.968 2.475 4.411 11.941.538 1.721 1.829-.43c13.448-2.797 18.289-9.037 22.162-14.094 9.467 4.734 12.91 12.373 12.91 12.373.323.43 1.076 1.936 1.076 1.936l1.829-1.184 9.897-5.809 1.722-.969-.862-1.719z"/>
+            <path d="M74.7 56.896c4.518 0 8.069 3.55 8.069 8.068 0 4.411-3.551 7.961-8.069 7.961a7.943 7.943 0 0 1-7.961-7.961c0-4.518 3.55-8.068 7.961-8.068zm9.467 57.555c-1.722-3.119-6.025-8.82-15.492-12.908-.322-.215-.646-.324-.968-.324-.538 0-1.076.324-1.399.646l-.968 1.291c-3.442 4.625-7.315 9.789-18.074 12.588l-2.904-7.854c3.765-1.076 10.866-4.09 14.631-12.05.323-.43.538-1.506.753-3.873.753-8.821 3.12-13.556 8.284-16.46 1.291.753 2.689 1.398 4.303 1.721v.538c.108.646.108 1.291.323 1.829l.431.968.968.323c5.271 1.829 10.435.323 13.233-.86l2.474 5.486c-7.854 4.088-11.296 3.551-15.384 2.905 0 0-.968-.107-1.291-.107-1.184 0-1.829.861-2.044 2.044-.215 1.291.968 1.829.968 1.829.431.43 11.296 4.519 18.397 18.612l-6.241 3.656z" fill="yellow"/>
+        </svg>`;
+        this.els = {};
+      }
+      handleContentLoaded(event){
+        this.els.root = document.getElementById('root');
+
+        this.els.window_loading = createNode({ root: this.els.root, tag: 'div', className: 'window center' });
+        this.els.window_loading_title = createNode({ root: this.els.window_loading, tag: 'div', className: 'title', innerHTML: `${this.aim_logo_svg} Connect` });
+        this.els.window_loading_spinner = createNode({ root: this.els.window_loading, tag: 'div', innerHTML: `Connecting to server...` });
+
+        this.els.window_connect = createNode({ root: this.els.root, tag: 'div', className: 'window hidden connect center' });
+        this.els.window_connect_title = createNode({ root: this.els.window_connect, tag: 'div', className: 'title', innerHTML: `${this.aim_logo_svg} Connect` });
+        this.els.input_user_label = createNode({ root: this.els.window_connect, tag: 'label', innerHTML: `Username` });
+        this.els.input_user = createNode({ root: this.els.window_connect, tag: 'input', attributes: { type: 'text', placeholder: 'Username'} });
+        this.els.input_room_label = createNode({ root: this.els.window_connect, tag: 'label', innerHTML: `Chat Room` });
+        this.els.input_room = createNode({ root: this.els.window_connect, tag: 'input', attributes: { type: 'text', placeholder: 'Room'} });
+        this.els.input_user.addEventListener('keydown',this.handleClickConnect.bind(this));
+        this.els.input_room.addEventListener('keydown',this.handleClickConnect.bind(this));
+        this.els.actions_connect = createNode({ root: this.els.window_connect, tag: 'div', className: 'actions' });
+        this.els.button_connect = createNode({ root: this.els.actions_connect, tag: 'button', innerHTML: `Connect` });
+        this.els.button_connect.addEventListener('click', this.handleClickConnect.bind(this));
+        this.els.button_connect_cancel = createNode({ root: this.els.actions_connect, tag: 'button', className: 'none', innerHTML: `Cancel` });
+        this.els.button_connect_cancel.addEventListener('click', this.handleClickConnectCancel.bind(this));
+        this.els.connect_error_message = createNode({ root: this.els.window_connect, tag: 'div', className: 'error none' });
+
+        this.els.container = createNode({ root: this.els.root, tag: 'div', className: 'container hidden' });
+        this.els.window_chat = createNode({ root: this.els.container, tag: 'div', className: 'window hidden chat' });
+        this.els.window_chat_title = createNode({ root: this.els.window_chat, tag: 'div', className: 'title' });
+        this.els.messages = createNode({ root: this.els.window_chat, tag: 'div', className: 'messages' });
+        this.els.window_message_actions = createNode({ root: this.els.window_chat, tag: 'div', className: 'actions' });
+        this.els.input_message = createNode({ root: this.els.window_message_actions, tag: 'input', attributes: { type: 'text', placeholder: 'Send Message'} });
+        this.els.input_message.addEventListener('keydown',this.handleMessageEnter.bind(this));
+        this.els.button_message = createNode({ root: this.els.window_message_actions, tag: 'button', innerHTML: `Send` });
+        this.els.button_message.addEventListener('click', this.handleMessageEnter.bind(this));
+
+        this.els.window_buddylist = createNode({ root: this.els.container, tag: 'div', className: 'window hidden buddylist' });
+        this.els.window_buddylist_title = createNode({ root: this.els.window_buddylist, tag: 'div', className: 'title', innerHTML: `${this.aim_logo_svg} Buddy List` });
+        this.els.buddylist_buddies = createNode({ root: this.els.window_buddylist, tag: 'div', className: 'buddies' });
+        this.els.window_buddylist_actions = createNode({ root: this.els.window_buddylist, tag: 'div', className: 'actions' });
+        this.els.button_settings = createNode({ root: this.els.window_buddylist_actions, tag: 'button', innerHTML: `Settings` });
+        this.els.button_settings.addEventListener('click',this.handleClickSettings.bind(this));
+
+        this.socket = new WebSocket(this.socket_server);
+        this.socket.onopen = this.socketOnOpen.bind(this);
+        this.socket.onmessage = this.socketOnMessage.bind(this);
+      }
+      socketOnOpen(event){
+        setTimeout(() => {
+          this.els.window_loading.classList.add('hidden');
+          this.els.window_connect.classList.remove('hidden');
+          this.els.input_user.focus();
+        },500);
+      }
+      socketOnMessage(event){
+        const response = JSON.parse(event.data);
+        if(response.connect) this.socketResponseConnect({ response }); 
+        else if(response.chat) this.socketResponseChat({ response }); 
+        else if(response.buddylist) this.socketResponseBuddyList({ response }); 
+        else if(response.name_change) this.socketResponseNameChange({ response }); 
+        else if(response.buddy_join) this.socketResponseBuddyJoin({ response }); 
+      }
+      socketResponseConnect({ response }){
+        if(!response.success){
+          this.els.connect_error_message.classList.remove('none');
+          return this.els.connect_error_message.innerHTML = response.error;
+        }
+        if(response.data.room_name !== this.room_name) this.els.messages.innerHTML = ``;
+        this.user_name = response.data.user_name;
+        this.room_name = response.data.room_name;
+        this.els.window_chat_title.innerHTML = `${this.aim_logo_svg} <b>${this.room_name}</b>`;
+        if(this.buddylist_timeout) clearTimeout(this.buddylist_timeout);
+        this.socket.send(JSON.stringify({ buddylist: true }));
+        this.els.window_connect.classList.add('hidden');
+        this.els.container.classList.remove('hidden');
+        this.els.window_buddylist.classList.remove('hidden');
+        this.els.window_chat.classList.remove('hidden');
+        this.els.input_message.focus();
+      }
+      socketResponseChat({ response }){
+        if(!response.success) return;
+        let color = 'red';
+        let sound = 'receive';
+        if(this.user_name === response.data.from){
+          this.els.input_message.value = '';
+          this.els.input_message.focus();
+          color = 'blue';
+          sound = 'send';
+        }
+        this.playSound(sound);
+        this.writeMessage(`<b style="color:${color}">${response.data.from}:</b> ${response.data.message}`);
+      }
+      socketResponseBuddyList({ response }){
+        this.els.buddylist_buddies.innerHTML = ``;
+        if(!response.success) return;
+        for(const buddy of this.buddies){
+          if(response.data.buddies.includes(buddy)) continue;
+          this.writeMessage(`<i>${buddy} left the chat.</i>`);
+          this.playSound('leave');
+        }
+        for(const buddy of response.data.buddies){
+          const el_buddy = createNode({ root: this.els.buddylist_buddies, tag: 'div', className: buddy === this.user_name ? `font-bold ` : ``, innerHTML: buddy });
+          el_buddy.addEventListener('click', this.handleClickBuddy.bind(this));
+        }
+        this.buddies = response.data.buddies;
+        this.buddylist_timeout = setTimeout(() => this.socket.send(JSON.stringify({ buddylist: true })), 5000);
+      }
+      socketResponseNameChange({ response }){
+        const buddy_index = this.buddies.findIndex(buddy => buddy === response.data.from );
+        this.buddies[buddy_index] = response.data.to;
+        this.writeMessage(`<b>${response.data.from}</b> changed their name to <b>${response.data.to}</b>.`);
+      }
+      socketResponseBuddyJoin({ response }){
+        this.writeMessage(`<i>${response.data.user_name} entered the chat.</i>`);
+        this.playSound('enter');
+      }
+      handleClickConnect(event){
+        if(event.keyCode && event.keyCode !== 13) return;
+        const invalid_input = [this.els.input_user,this.els.input_room].find(input => !input.value );
+        if(invalid_input){
+          invalid_input.focus();
+          this.els.connect_error_message.classList.remove('none');
+          this.els.connect_error_message.innerHTML = `${invalid_input.placeholder} required.`;
+        } else {
+          this.els.connect_error_message.classList.add('none');
+          const socket_message = { connect: true, user_name: this.els.input_user.value, room_name: this.els.input_room.value }
+          this.socket.send(JSON.stringify(socket_message));
+        }
+      }
+      handleClickConnectCancel(){
+        this.els.window_connect.classList.add('hidden');
+        this.els.connect_error_message.classList.add('none');
+        this.els.input_user.value = this.user_name;
+        this.els.input_room.value = this.room_name;
+      }
+      handleMessageEnter(event){
+        if(event.keyCode && event.keyCode !== 13) return;
+        if(!this.els.input_message.value) return this.els.input_message.focus();
+        const socket_message = { chat: true, message: this.els.input_message.value };
+        this.socket.send(JSON.stringify(socket_message));
+      }
+      handleClickSettings(){
+        this.els.button_connect_cancel.classList.remove('none');
+        this.els.window_connect.classList.remove('hidden');
+        this.els.input_user.focus();
+      }
+      handleClickBuddy(event){
+        const buddy = event.target.innerHTML;
+        if(buddy === this.user_name) return this.handleClickSettings();
+        const socket_message = { chat: true, message: `@${buddy} 👋` };
+        this.socket.send(JSON.stringify(socket_message));
+      }
+      writeMessage(message){
+        const el_message = createNode({ root: this.els.messages, tag: 'div', innerHTML: message });
+        this.els.messages.scrollTo(0, this.els.messages.scrollHeight);
+      }
+      playSound(name){
+        if(this.sound.duration > 0 && !this.sound.paused){
+          this.sound.pause();
+          this.sound.currentTime = 0;
+        }
+        this.sound.src = this.sounds[name];
+        this.sound.play();
+      }
+    }
+    const app = new App();
+  </script>
+</head>
+<body>
+  <div id="root"></div>
+</body>
+</html>
