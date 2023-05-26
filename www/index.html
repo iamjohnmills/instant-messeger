@@ -6,7 +6,7 @@
   <link rel="icon" href="aim-logo.svg" sizes="any" type="image/svg+xml">
   <style>
     * { box-sizing: border-box;}
-    html,body { font-family: system-ui; line-height: 1.2; }
+    html,body { font-family: system-ui; line-height: 1.2; -webkit-overflow-scrolling : touch !important; overflow: auto !important; }
     body { background-color: aqua; }
     .none { display: none; }
     .font-bold { font-weight: bold; }
@@ -60,7 +60,7 @@
         this.buddies = [];
         this.buddylist_timeout = null;
         this.reconnect_timeout = null;
-        this.sound = new Audio();
+        // this.sound = new Audio();
         this.sounds = { enter: 'dooropen.wav', leave: 'doorslam.wav', receive: 'imrcv.wav', send: 'imsend.wav' };
         this.aim_logo_svg = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="35 52 65 69">
             <path d="M95.033 110.795c-3.873-8.715-9.252-14.416-13.555-17.859 3.227-.43 6.885-1.721 12.049-4.626l1.614-.861-.753-1.829-4.088-9.36-.968-2.152-2.044 1.184c-.108.108-4.411 2.259-9.36 1.721 5.379-1.398 9.36-6.239 9.36-12.049a12.535 12.535 0 0 0-12.587-12.587c-6.885 0-12.48 5.594-12.48 12.587 0 2.797.968 5.379 2.582 7.531-6.777 4.626-8.714 12.265-9.252 19.042-.215 1.721-.323 2.259-.323 2.474-4.303 8.823-13.555 10.114-13.986 10.221l-2.689.322.968 2.475 4.411 11.941.538 1.721 1.829-.43c13.448-2.797 18.289-9.037 22.162-14.094 9.467 4.734 12.91 12.373 12.91 12.373.323.43 1.076 1.936 1.076 1.936l1.829-1.184 9.897-5.809 1.722-.969-.862-1.719z"/>
@@ -70,6 +70,8 @@
       }
       handleContentLoaded(event){
         this.els.root = document.getElementById('root');
+
+        this.audio = createNode({ tag: 'audio', attributes: { playsinline: 'true' } })
 
         this.els.window_loading = createNode({ root: this.els.root, tag: 'div', className: 'window center' });
         this.els.window_loading_title = createNode({ root: this.els.window_loading, tag: 'div', className: 'title', innerHTML: `${this.aim_logo_svg} Connect` });
@@ -241,12 +243,12 @@
         this.els.messages.scrollTo(0, this.els.messages.scrollHeight);
       }
       playSound(name){
-        if(this.sound.duration > 0 && !this.sound.paused){
-          this.sound.pause();
-          this.sound.currentTime = 0;
+        if(this.audio.duration > 0 && !this.audio.paused){
+          this.audio.pause();
+          this.audio.currentTime = 0;
         }
-        this.sound.src = this.sounds[name];
-        this.sound.play();
+        this.audio.src = this.sounds[name];
+        this.audio.play();
       }
     }
     const app = new App();
