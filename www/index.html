@@ -1,7 +1,7 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
   <title>Instant Messeger</title>
   <link rel="icon" href="aim-logo.svg" sizes="any" type="image/svg+xml">
   <style>
@@ -13,7 +13,7 @@
     .error { padding: 15px 0 5px 0; color: red;  text-align: center;}
     label { display: block; margin-bottom: 5px; }
     input[type="text"] { width: 100%; font-size: 14px; outline: none; padding: 10px; background: #fff; border-width: 3px; border-color: #ccc; border-style: inset; }
-    button { display: flex; align-items: center; justify-content: center; font-weight: bold; cursor: pointer; padding: 10px; background: #ddd; border-color: #fff; border-width: 3px; border-style: outset; }
+    button { color: #000; display: flex; align-items: center; justify-content: center; font-weight: bold; cursor: pointer; padding: 10px; background: #ddd; border-color: #fff; border-width: 3px; border-style: outset; }
     button:active { border-style: inset; }
     button:focus-visible { outline: none; background: #ccc; }
     .window { box-shadow: 5px 5px 5px rgba(0,0,0,0.2); border-width: 4px; background: #f1f1f1; border-style: ridge; padding: 10px; margin: 10px; opacity: 1; transform: scale(1); transition: all 0.2s ease-in-out; }
@@ -53,12 +53,13 @@
       constructor(){
         document.addEventListener('DOMContentLoaded',this.handleContentLoaded.bind(this));
         // this.socket_server = 'ws://localhost:8003';
-        this.socket_server = 'wss://instant-messeger.onrender.com'
+        this.socket_server = 'wss://instant-messeger.onrender.com';
         this.connected = false;
         this.user_name = null;
         this.room_name = null;
         this.buddies = [];
         this.buddylist_timeout = null;
+        this.reconnect_timeout = null;
         this.sound = new Audio();
         this.sounds = { enter: 'dooropen.wav', leave: 'doorslam.wav', receive: 'imrcv.wav', send: 'imsend.wav' };
         this.aim_logo_svg = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="35 52 65 69">
@@ -85,8 +86,10 @@
         this.els.actions_connect = createNode({ root: this.els.window_connect, tag: 'div', className: 'actions' });
         this.els.button_connect = createNode({ root: this.els.actions_connect, tag: 'button', innerHTML: `Connect` });
         this.els.button_connect.addEventListener('click', this.handleClickConnect.bind(this));
+        this.els.button_connect.addEventListener('touchstart', this.handleClickConnect.bind(this));
         this.els.button_connect_cancel = createNode({ root: this.els.actions_connect, tag: 'button', className: 'none', innerHTML: `Cancel` });
         this.els.button_connect_cancel.addEventListener('click', this.handleClickConnectCancel.bind(this));
+        this.els.button_connect_cancel.addEventListener('touchstart', this.handleClickConnectCancel.bind(this));
         this.els.connect_error_message = createNode({ root: this.els.window_connect, tag: 'div', className: 'error none' });
 
         this.els.container = createNode({ root: this.els.root, tag: 'div', className: 'container hidden' });
@@ -105,12 +108,16 @@
         this.els.window_buddylist_actions = createNode({ root: this.els.window_buddylist, tag: 'div', className: 'actions' });
         this.els.button_settings = createNode({ root: this.els.window_buddylist_actions, tag: 'button', innerHTML: `Settings` });
         this.els.button_settings.addEventListener('click',this.handleClickSettings.bind(this));
-
+        this.els.button_settings.addEventListener('touchstart',this.handleClickSettings.bind(this));
+        this.socketConnectToServer();
+      }
+      socketConnectToServer(){
         this.socket = new WebSocket(this.socket_server);
         this.socket.onopen = this.socketOnOpen.bind(this);
         this.socket.onmessage = this.socketOnMessage.bind(this);
+        this.socket.onclose = this.socketOnClose.bind(this);
       }
-      socketOnOpen(event){
+      socketOnOpen(){
         setTimeout(() => {
           this.els.window_loading.classList.add('hidden');
           this.els.window_connect.classList.remove('hidden');
@@ -124,6 +131,16 @@
         else if(response.buddylist) this.socketResponseBuddyList({ response }); 
         else if(response.name_change) this.socketResponseNameChange({ response }); 
         else if(response.buddy_join) this.socketResponseBuddyJoin({ response }); 
+      }
+      socketOnClose(){
+        this.els.window_loading_spinner.innerHTML = `Disconnected from server.`;
+        this.els.window_loading.classList.remove('hidden');
+        this.els.window_connect.classList.add('hidden');
+        this.els.window_chat.classList.add('hidden');
+        this.els.window_buddylist.classList.add('hidden');
+        this.recconnect_timeout = setTimeout(() => {
+          this.socketConnectToServer();
+        }, 5000);
       }
       socketResponseConnect({ response }){
         if(!response.success){
@@ -181,6 +198,8 @@
       }
       handleClickConnect(event){
         if(event.keyCode && event.keyCode !== 13) return;
+        event.preventDefault();
+        console.log('handleCLickConnect')
         const invalid_input = [this.els.input_user,this.els.input_room].find(input => !input.value );
         if(invalid_input){
           invalid_input.focus();
@@ -193,6 +212,7 @@
         }
       }
       handleClickConnectCancel(){
+        event.preventDefault();
         this.els.window_connect.classList.add('hidden');
         this.els.connect_error_message.classList.add('none');
         this.els.input_user.value = this.user_name;
@@ -205,6 +225,7 @@
         this.socket.send(JSON.stringify(socket_message));
       }
       handleClickSettings(){
+        event.preventDefault();
         this.els.button_connect_cancel.classList.remove('none');
         this.els.window_connect.classList.remove('hidden');
         this.els.input_user.focus();
