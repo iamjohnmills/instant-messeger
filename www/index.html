@@ -61,6 +61,7 @@
         this.buddylist_timeout = null;
         this.reconnect_timeout = null;
         this.audio = null;
+        this.reconnected = false;
         // this.sound = new Audio();
         this.sounds = { enter: 'dooropen.wav', leave: 'doorslam.wav', receive: 'imrcv.wav', send: 'imsend.wav' };
         this.aim_logo_svg = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="35 52 65 69">
@@ -123,7 +124,10 @@
           this.els.window_loading.classList.add('hidden');
           this.els.window_connect.classList.remove('hidden');
           this.els.input_user.focus();
-          if(this.user_name && this.room_name) this.handleClickConnect({ keyCode: 13 });            
+          if(this.user_name && this.room_name) {
+            this.reconnected = true;
+            this.handleClickConnect({ keyCode: 13 });
+          }      
         },500);
       }
       socketOnMessage(event){
@@ -197,7 +201,8 @@
       }
       socketResponseBuddyJoin({ response }){
         this.writeMessage(`<i>${response.data.user_name} entered the chat.</i>`);
-        this.playSound('enter');
+        if(!this.reconnected) this.playSound('enter');
+        this.reconnected = false;
       }
       handleClickConnect(event){
         if(event.keyCode && event.keyCode !== 13) return;
