@@ -182,7 +182,7 @@
         for(const buddy of this.buddies){
           if(response.data.buddies.includes(buddy)) continue;
           this.writeMessage(`<i>${buddy} left the chat.</i>`);
-          this.playSound('leave');
+          // this.playSound('leave');
         }
         for(const buddy of response.data.buddies){
           const el_buddy = createNode({ root: this.els.buddylist_buddies, tag: 'div', className: buddy === this.user_name ? `font-bold ` : ``, innerHTML: buddy });
