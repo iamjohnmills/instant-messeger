@@ -52,10 +52,9 @@
     class App {
       constructor(){
         document.addEventListener('DOMContentLoaded',this.handleContentLoaded.bind(this));
-        // this.socket_server = 'ws://localhost:8003';
-        // this.serviceworker = new Worker('/serviceworker.js');
-        this.socket_server = 'wss://instant-messeger.onrender.com';
-        this.connected = false;
+        // this.socket_server = 'wss://instant-messeger.onrender.com';
+        this.socket_server = 'ws://localhost:8003';
+        this.reconnect = false;
         this.user_name = null;
         this.room_name = null;
         this.buddies = [];
@@ -143,6 +142,7 @@
         this.els.window_chat.classList.add('hidden');
         this.els.window_buddylist.classList.add('hidden');
         this.recconnect_timeout = setTimeout(() => {
+          this.reconnect = true;
           this.socketConnectToServer();
         }, 5000);
       }
@@ -157,19 +157,13 @@
         this.room_name = response.data.room_name;
         this.els.window_chat_title.innerHTML = `${this.aim_logo_svg} <b>${this.room_name}</b>`;
         if(this.buddylist_timeout) clearTimeout(this.buddylist_timeout);
-        // this.serviceworker.postMessage({ action: 'clear_timeout' });
         this.socket.send(JSON.stringify({ buddylist: true }));
         this.els.window_connect.classList.add('hidden');
         this.els.container.classList.remove('hidden');
         this.els.window_buddylist.classList.remove('hidden');
         this.els.window_chat.classList.remove('hidden');
         this.els.input_message.focus();
-        // this.serviceworker.postMessage({ action: 'start_timeout', timeout: 3000 });
-        // this.serviceworker.addEventListener('message',(event) => {
-        //   if(event.data.action !== 'timeout') return;
-        //   this.socket.send(JSON.stringify({ buddylist: true }));
-        //   this.serviceworker.postMessage({ action: 'start_timeout', timeout: 3000 });
-        // });
+        this.reconnect = false;
       }
       socketResponseChat({ response }){
         if(!response.success) return;
@@ -205,6 +199,7 @@
         this.writeMessage(`<b>${response.data.from}</b> changed their name to <b>${response.data.to}</b>.`);
       }
       socketResponseBuddyJoin({ response }){
+        if(response.reconnect) return;
         this.writeMessage(`<i>${response.data.user_name} entered the chat.</i>`);
         this.playSound('enter');
       }
@@ -219,7 +214,7 @@
           this.els.connect_error_message.innerHTML = `${invalid_input.placeholder} required.`;
         } else {
           this.els.connect_error_message.classList.add('none');
-          const socket_message = { connect: true, user_name: this.els.input_user.value, room_name: this.els.input_room.value }
+          const socket_message = { connect: true, reconnect: this.reconnect, user_name: this.els.input_user.value, room_name: this.els.input_room.value }
           this.socket.send(JSON.stringify(socket_message));
         }
       }
