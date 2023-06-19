@@ -141,7 +141,7 @@
         this.els.window_connect.classList.add('hidden');
         this.els.window_chat.classList.add('hidden');
         this.els.window_buddylist.classList.add('hidden');
-        this.recconnect_timeout = setTimeout(() => {
+        this.reconnect_timeout = setTimeout(() => {
           this.reconnect = true;
           this.socketConnectToServer();
         }, 5000);
