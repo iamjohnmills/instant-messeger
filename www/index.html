@@ -53,13 +53,13 @@
       constructor(){
         document.addEventListener('DOMContentLoaded',this.handleContentLoaded.bind(this));
         // this.socket_server = 'ws://localhost:8003';
+        this.serviceworker = new Worker('/serviceworker.js');
         this.socket_server = 'wss://instant-messeger.onrender.com';
         this.connected = false;
         this.user_name = null;
         this.room_name = null;
         this.buddies = [];
-        this.buddylist_timeout = null;
-        this.reconnect_timeout = null;
+        // this.buddylist_timeout = null;
         this.audio = null;
         this.sounds = { enter: 'dooropen.wav', leave: 'doorslam.wav', receive: 'imrcv.wav', send: 'imsend.wav' };
         this.aim_logo_svg = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="35 52 65 69">
@@ -109,6 +109,7 @@
         this.els.button_settings = createNode({ root: this.els.window_buddylist_actions, tag: 'button', innerHTML: `Settings` });
         this.els.button_settings.addEventListener('click',this.handleClickSettings.bind(this));
         this.els.button_settings.addEventListener('touchstart',this.handleClickSettings.bind(this));
+
         this.socketConnectToServer();
       }
       socketConnectToServer(){
@@ -124,7 +125,7 @@
           this.els.input_user.focus();
           if(this.user_name && this.room_name) {
             this.handleClickConnect({ keyCode: 13 });
-          }      
+          }
         },500);
       }
       socketOnMessage(event){
@@ -155,7 +156,8 @@
         this.user_name = response.data.user_name;
         this.room_name = response.data.room_name;
         this.els.window_chat_title.innerHTML = `${this.aim_logo_svg} <b>${this.room_name}</b>`;
-        if(this.buddylist_timeout) clearTimeout(this.buddylist_timeout);
+        // if(this.buddylist_timeout) clearTimeout(this.buddylist_timeout);
+        this.serviceworker.postMessage({ action: 'clear_timeout' });
         this.socket.send(JSON.stringify({ buddylist: true }));
         this.els.window_connect.classList.add('hidden');
         this.els.container.classList.remove('hidden');
@@ -189,7 +191,12 @@
           el_buddy.addEventListener('click', this.handleClickBuddy.bind(this));
         }
         this.buddies = response.data.buddies;
-        this.buddylist_timeout = setTimeout(() => this.socket.send(JSON.stringify({ buddylist: true })), 5000);
+        // this.buddylist_timeout = setTimeout(() => this.socket.send(JSON.stringify({ buddylist: true })), 5000);
+        this.serviceworker.postMessage({ action: 'start_timeout', timeout: 5000 });
+        this.serviceworker.addEventListener('message',(event) => {
+          if(event.data.action !== 'timeout') return;
+          this.socket.send(JSON.stringify({ buddylist: true }));
+        });
       }
       socketResponseNameChange({ response }){
         const buddy_index = this.buddies.findIndex(buddy => buddy === response.data.from );
